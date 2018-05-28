@@ -10,7 +10,7 @@ app.use(cors())
 app.use(bodyParser.json());
 app.use(express.static("dist"));
 
-app.get('/getServices', function (req, res) {
+app.get('/services', function (req, res) {
     db.serialize(function() {
         var servicesList = []
         db.each("SELECT * FROM services ORDER BY order_n ASC", function(err, row) {
@@ -18,16 +18,16 @@ app.get('/getServices', function (req, res) {
             id: row.id,
             name: row.name,
             url: row.url,
-            env: row.env
+            env: ("" + row.env).split(',').map(Number)
             }
             servicesList.push(service)
         }, function(){
-            res.send(JSON.stringify(servicesList));
+            res.json(servicesList);
         });
       });
 })
 
-app.get('/getEnvs', function (req, res) {
+app.get('/envs', function (req, res) {
   db.serialize(function() {
       var envList = []
       db.each("SELECT * FROM envs", function(err, row) {
@@ -35,16 +35,17 @@ app.get('/getEnvs', function (req, res) {
           id: row.id,
           name: row.name,
           alias: row.alias,
-          color: row.color
+          color: row.color,
+          project: ("" + row.project).split(',').map(Number)
           }
           envList.push(env)
       }, function(){
-          res.send(JSON.stringify(envList));
+          res.json(envList);
       });
     });
 })
 
-app.get('/getProjects', function (req, res) {
+app.get('/projects', function (req, res) {
     db.serialize(function() {
         var projList = []
         db.each("SELECT * FROM projects", function(err, row) {
@@ -55,19 +56,9 @@ app.get('/getProjects', function (req, res) {
             }
             projList.push(proj)
         }, function(){
-            res.send(JSON.stringify(projList));
+            res.json(projList);
         });
     });
-})
-
-app.post('/swap', function(req,res){
-  db.run('UPDATE services SET order_n = -1 where order_n = ' + req.body.to, function(){
-    db.run('UPDATE services SET order_n = ' + req.body.to + ' where order_n = ' + req.body.from, function(){
-      db.run('UPDATE services SET order_n = ' + req.body.from + ' where order_n = -1', function(){
-        res.send("OK")
-      })
-    })
-  })
 })
 
 app.post('/create', function (req, res) {
