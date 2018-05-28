@@ -1,8 +1,15 @@
 <template>
   <section class="express-panel">
-    <div class="header">
-      <input class="search-bar" v-model="searchQuery"/>
+    <div class="shader" v-if="modalActive">
+
     </div>
+    <div class="header">
+      
+      <b-input placeholder="Search..." type="search" class="search-bar" icon="magnify" v-model="searchQuery">
+      </b-input>
+
+    </div>
+
     <div class="env-bar">
       <div class="env-item" v-for="env in envs" :key="env.id"  :style="{backgroundColor: env.color}">
         {{env.name}}
@@ -41,6 +48,7 @@ export default {
   name: 'ExpressPanel',
   data () {
     return{
+      modalActive: 0,
       searchQuery: "",
       horizontalCount: 3,
       colorsList: ['#f44336', '#E91E63', '#9C27B0', '#673AB7', '#3F51B5', '#2196F3', '#03A9F4', '#00BCD4', '#009688', '#4CAF50', '#8BC34A', '#CDDC39', '#FFEB3B', '#FFC107', '#FF9800', '#FF5722', '#795548', '#9E9E9E', '#607D8B'],
@@ -113,14 +121,10 @@ export default {
   text-align: center;
 }
 .search-bar{
+  margin-top: 30px;
   font-family: 'Courier New', Courier, monospace;
-  background-color: #FFF;
-  border-radius: 15px;
   display: inline-block;
-  border: none;
-  outline: none;
-  padding: 10px;
-  width: 300px;
+  width: 500px;
 }
 
 .env-bar{
@@ -143,13 +147,14 @@ export default {
   justify-content: center;
 }
 .service-block{
+  transition: all 0.2s;
   background-color: #000;
   color:#fff;
   padding: 10px;
   display: inline-block;
-  width: 160px;
+  width: 180px;
   margin: 10px;
-  height: 80px;
+  height: 100px;
   align-items: center;
   justify-content: center;
 }
@@ -164,5 +169,23 @@ export default {
 }
 .services-grid{
   height: 600px;
+}
+.shader{
+  position: absolute;
+  height: 100vh;
+  width: 100vw;
+  background-color: rgba(0,0,0,0.8);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.modal{
+  position: absolute;
+  background-color: #FFF;
+  border-radius: 5px;
+  width: 500px;
+}
+.modal h1{
+  text-align: center;
 }
 </style>

@@ -12,6 +12,7 @@
   },
   "dependencies": {
     "axios": "^0.18.0",
+    "buefy": "^0.6.5",
     "cors": "^2.8.4",
     "muuri": "^0.5.4",
     "sqlite3": "^4.0.0",
