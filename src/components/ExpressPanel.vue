@@ -1,35 +1,28 @@
 <template>
-  <section class="express_panel">
-    <h1 id="tool_title">{{activeTool}}</h1>
-    <VuePerfectScrollbar class="service_bar">
-      <div class="env" @click="switchEnv(env.id)" v-bind:class="{env_active: env.id == currentEnv}" v-bind:key="env.id" v-for="env in envs"  @mouseover="logStatus('Show only: ' + env.name)">
-        <p>{{env.name}}</p>
-        <div class="indicator" v-bind:style="{'background-color': env.color}"></div>
-      </div>
-    </VuePerfectScrollbar>
-    <div class="search">
-      <input type="text" class="search_bar" v-model="searchQuery">
-      <button class="search_button">Search</button>
-      <button class="new_env_btn">Add enviroment</button>
-      <button class="new_srv_btn">Add service</button>
+  <section class="express-panel">
+    <div class="header">
+      <input class="search-bar" v-model="searchQuery"/>
     </div>
-    <div class="grid">
-      <div class="item" v-bind:key="service.id" v-for="service in filteredServices" v-bind:data-id="service.id" v-if="inEnv(service.env, currentEnv)">
-        <div class="item-content" @mouseover="logStatus('Go To: ' + service.url)">
-          <div class="card">
-            <div class="service_header">
-              <h1>{{service.name}}</h1>
-              <div class="indicators_container">
-                <div class="indicator" v-bind:key="color.id" v-for="color in findColors(service.env)" v-bind:style="{'background-color': color}"></div>
-              </div>
-            </div>
-            <p>{{service.url}}</p>
-          </div>
+    <div class="env-bar">
+      <div class="env-item" v-for="env in envs" :key="env.id"  :style="{backgroundColor: env.color}">
+        {{env.name}}
+      </div>
+    </div>
+    <div class="content">
+      <draggable class="services-grid" :style="{width: gridWidth + 'px'}" v-model="services" :options="{sort:editMode, draggable: '.service-draggable'}" @start="drag=true" @end="drag=false">
+        <div class="service-block service-draggable" v-for="service in filteredServices" :key="service.id">
+          <div class="service-name">{{service.name}}</div>
+          <div class="service-url">{{service.url}}</div>
         </div>
-      </div>
+        <button class="service-block service-add-button" slot="footer" >
+          +
+        </button>
+      </draggable>
     </div>
-    <div class="status_bar">
-      {{this.statusBar}}
+    <div class="projects">
+      <div class="project-item" v-for="project in projects" :key="project.id">
+        {{project.name}}
+      </div>
     </div>
   </section>
 </template>
@@ -37,87 +30,35 @@
 <script>
 /* eslint-disable */
 import axios from 'axios'
-import Muuri from 'muuri'
+import draggable from 'vuedraggable'
 import VuePerfectScrollbar from 'vue-perfect-scrollbar'
 
 export default {
   components: {
+    draggable,
     VuePerfectScrollbar
   },
   name: 'ExpressPanel',
   data () {
     return{
-      grid: '',
-      searchQuery: '',
+      searchQuery: "",
+      horizontalCount: 3,
+      colorsList: ['#f44336', '#E91E63', '#9C27B0', '#673AB7', '#3F51B5', '#2196F3', '#03A9F4', '#00BCD4', '#009688', '#4CAF50', '#8BC34A', '#CDDC39', '#FFEB3B', '#FFC107', '#FF9800', '#FF5722', '#795548', '#9E9E9E', '#607D8B'],
       services: [],
       envs: [],
-      activeEnvs: [],
-      currentEnv: 1,
-      newServicesLoaded: false,
-      activeTool: 'Express Panel',
-      statusBar: ''
+      projects: [],
+      editMode: true,
     }
   },
   mounted() {
-    this.loadServices()
+    this.loadProjects()
     this.loadEnvs()
-    document.body.style.background = 'linear-gradient(to bottom, #24c6dc, #514a9d'
-  },
-  updated(){
-    if (this.newServicesLoaded == true){
-    this.initTable()
-    this.newServicesLoaded = false
-    }
+    this.loadServices()
   },
   methods: {
-    switchEnv: function(a){
-      this.currentEnv = a
-      this.loadEnvs()
-    },
-    inEnv: function(a,b){
-      return((""+a).split(",").includes(""+b));
-    },
-    findColors: function(a){
-      a = a.toString().split(',')
-      var colors = []
-      for(var i = 0; i<a.length; i++){
-        for (var j = 0; j<this.envs.length; j++){
-          if (a[i] == this.envs[j].id){
-            colors.push(this.envs[j].color)
-          }
-        }
-      }
-      return colors
-    },
-    logStatus: function(a){
-      this.statusBar = a
-    },
-    initTable:function(){
-      var k = this
-      try{
-        this.grid.destroy(true)
-      }
-      catch(e){
-        console.log(e)
-      }
-      this.gird = new Muuri('.grid', {
-          dragEnabled: true,
-          dragSortInterval: 300,
-          dragSortPredicate: {
-            threshold: 75,
-            action: 'swap'
-          }
-        }).on('move',function(items){
-          k.swapServices(items.fromIndex, items.toIndex)
-          k.logStatus('Swap successful')
-      });
-    },
     loadServices: function(){
-      this.logStatus('Loading Services...')
-      axios.get('http://192.168.11.204:4532/get')
+      axios.get('http://192.168.11.204:4532/getServices')
       .then(response => {
-        this.logStatus('Serivces loaded succesfully')
-        this.newServicesLoaded = true
         this.services = response.data
       })
       .catch(e => {
@@ -126,33 +67,40 @@ export default {
     },
 
     loadEnvs: function(){
-      this.logStatus('Loading Services...')
       axios.get('http://192.168.11.204:4532/getEnvs')
       .then(response => {
-        this.logStatus('Enviroments loaded succesfully')
         this.envs = response.data
+        this.initTable()
       })
       .catch(e => {
         this.error = e.data
       })
-    },
+    },  
 
-    swapServices: function(a,b){
-      axios.post('http://192.168.11.204:4532/swap', {
-        from: a,
-        to: b
-      })
+    loadProjects: function(){
+      axios.get('http://192.168.11.204:4532/getProjects')
       .then(response => {
+        this.projects = response.data
       })
-    },
-    
+      .catch(e => {
+        this.error = e.data
+      })
+    },  
   },
   computed: {
     filteredServices: function(){
-      this.newServicesLoaded = true
       return this.services.filter(service => {
         return service.name.toLowerCase().includes(this.searchQuery.toLowerCase())
       })
+    },
+    gridWidth: function() {
+      if (this.horizontalCount >= 3 && this.horizontalCount <= 7){
+        console.log(this.horizontalCount) 
+        return this.horizontalCount * 200        
+      }
+      else{
+        return 3 * 200
+      }
     }
   }
 }
@@ -160,129 +108,61 @@ export default {
 
 <!-- Add "scoped" attribute to limit CSS to this component only -->
 <style scoped>
-.env{
-  cursor: pointer;
-  background: rgba(255,255,255,0.5);
-  padding: 30px;
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  border-radius: 5px;
-}
-
-.env_active{
-  background: rgba(255,255,255,1);
-}
-
-.env:not(:last-child) {
-  margin-bottom: 30px;
-}
-
-.env p{
-  font-size: 18px;
-  margin: 0;
-}
-.indicator{
-  height: 14px;
-  width: 14px;
-  margin: 0 3px;
-  border-radius: 7px;
-}
-.indicators_container{
-  display: flex;
-}
-.service_header{
-  display: flex;
-  justify-content:space-between;
-  align-items: center;
-}
-
-.service_bar{
-  background: rgba(255,255,255,0.75);
-  position: absolute;
-  margin: 30px;
-  padding: 30px;
-  height: calc(100vh - 290px);
-  width: calc(20vw - 60px);
-  overflow-y: scroll;
-  border-radius: 5px;
-}
-.grid {
-  background: rgba(255,255,255,0.75);
-  position: absolute;
-  top:230px;
-  left: calc(20vw + 60px);
-  width: calc(80vw - 210px);
-  margin: 30px;
-  padding: 30px;
-  border-radius: 5px;
-}
-.item {
-  cursor: pointer;
-  display: block;
-  position: absolute;
-  margin: 30px 0 0px 30px;
-  height: 10vh;
-  padding: 30px;
-  width: calc(20vw - 90px / 4);
-  z-index: 1;
-  background: rgba(255,255,255,0.75);
-  border-radius: 5px;
-  color: #2c3e50;
-}
-.item.muuri-item-dragging {
-  z-index: 3;
-}
-.item.muuri-item-releasing {
-  z-index: 2;
-}
-.item.muuri-item-hidden {
-  z-index: 0;
-}
-.item-content {
-  position: relative;
+.header{
   width: 100%;
-  height: 100%;
+  text-align: center;
 }
-.search{
-  background: rgba(255,255,255,0.75);
-  border-radius: 5px;
-  position: absolute;
-  top:110px;
-  left: calc(20vw + 60px);
-  width: calc(80vw - 210px);
-  margin: 30px;
-  padding: 30px;
-  height: 30px;
-  display: flex;
-  align-items: center;
-  justify-content: space-between
-}
-.search_bar{
-  border-radius: 5px;
-  height: 30px;
-  width: 100%;
-  background: #FFF;
-  border: none;
-  padding: 0 10px;
-}
-.search_bar:focus{
+.search-bar{
+  font-family: 'Courier New', Courier, monospace;
+  background-color: #FFF;
+  border-radius: 15px;
+  display: inline-block;
   border: none;
   outline: none;
-}
-.search button{
-  height: 30px;
-  cursor: pointer;
-  word-wrap: break-word;
-}
-.new_srv_btn{
-  margin: 0 0 0 10px;
+  padding: 10px;
+  width: 300px;
 }
 
-.search_button{
-  background: #FFF;
-  border:none;
+.env-bar{
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.env-item{
+  color:#fff;
+  cursor: pointer;
+  padding: 10px;
+  margin: 10px;
+  border-radius: 5px;
+}
+
+.content{
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.service-block{
+  background-color: #000;
+  color:#fff;
+  padding: 10px;
+  display: inline-block;
+  width: 160px;
+  margin: 10px;
+  height: 80px;
+  align-items: center;
+  justify-content: center;
+}
+.service-add-button{
+  cursor: pointer;
+  font-size: 3em;
+  width: 180px;
+  border: none;
   outline: none;
-  margin: 0 30px 0 10px;
+  height: 100px;
+  position: absolute;
+}
+.services-grid{
+  height: 600px;
 }
 </style>

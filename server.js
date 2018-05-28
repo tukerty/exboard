@@ -10,7 +10,7 @@ app.use(cors())
 app.use(bodyParser.json());
 app.use(express.static("dist"));
 
-app.get('/get', function (req, res) {
+app.get('/getServices', function (req, res) {
     db.serialize(function() {
         var servicesList = []
         db.each("SELECT * FROM services ORDER BY order_n ASC", function(err, row) {
@@ -41,6 +41,22 @@ app.get('/getEnvs', function (req, res) {
       }, function(){
           res.send(JSON.stringify(envList));
       });
+    });
+})
+
+app.get('/getProjects', function (req, res) {
+    db.serialize(function() {
+        var projList = []
+        db.each("SELECT * FROM projects", function(err, row) {
+            var proj = {
+            id: row.id,
+            name: row.name,
+            color: row.color
+            }
+            projList.push(proj)
+        }, function(){
+            res.send(JSON.stringify(projList));
+        });
     });
 })
 
