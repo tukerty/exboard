@@ -5,6 +5,7 @@ import ExpressPanel from '@/components/ExpressPanel'
 import Translator from '@/components/Translator'
 
 import 'buefy/lib/buefy.css'
+import '@mdi/font/css/materialdesignicons.min.css'
 
 Vue.use(Router)
 Vue.use(Buefy)

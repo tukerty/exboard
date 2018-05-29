@@ -12,8 +12,11 @@ export default {
 
 <style>
 body{
+  transition: all 0.2s;
   margin: 0;
   font-family: 'Courier New', Courier, monospace;
-  background: linear-gradient(to right, #314755, #26a0da);
+  background: #ECF1F5;
+  min-height: 100vh;
+  overflow-y: hidden;
 }
 </style>

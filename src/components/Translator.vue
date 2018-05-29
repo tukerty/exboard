@@ -6,7 +6,6 @@
         <p>Test</p>
       </div>
     </VuePerfectScrollbar>
-    
     <table class="langTable">
         <tr>
             <th>Key</th>
