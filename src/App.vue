@@ -12,11 +12,10 @@ export default {
 
 <style>
 body{
-  transition: all 0.2s;
   margin: 0;
   font-family: 'Courier New', Courier, monospace;
   background: #ECF1F5;
   min-height: 100vh;
-  overflow-y: hidden;
+  overflow: hidden;
 }
 </style>
