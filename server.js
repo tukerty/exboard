@@ -71,8 +71,8 @@ app.post('/envs', function(req, res){
     res.send("OK")
 })
 
-app.delete('/envs', function (req, res) {
-    db.run('DELETE FROM envs WHERE id=' + req.body.id)
+app.delete('/envs/:id', function (req, res) {
+    db.run('DELETE FROM envs WHERE id=' + req.params.id)
     res.send("OK")
 })
 

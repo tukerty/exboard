@@ -56,8 +56,8 @@
       <div class="tag env-item" :class="{'active': env.active}" v-for="env in envs" :key="env.id"  :style="{backgroundColor: env.color}" @click="toggleEnv(env)">
         {{env.name}}
             <div class="service-buttons env-buttons" v-if="editMode">
-                <b-icon icon="circle-edit-outline" size="is-small"></b-icon>
-                <b-icon icon="close-circle-outline" size="is-small"></b-icon>
+                <b-icon icon="circle-edit-outline" size="is-small" @click.native="editEnv(env)"></b-icon>
+                <b-icon icon="close-circle-outline" size="is-small" @click.native="deleteEnv(env.id)"></b-icon>
             </div>
       </div>
       <div class="tag env-item add-env active" :style="{backgroundColor: '#607D8B'}" v-if="editMode" @click="modalNewEnvActive = true">
@@ -132,8 +132,8 @@
         <div class="color-picker">
           <input type="radio" name="service" :value="color" v-model="modalNewServiceColor" v-for="color in colorsList" :key="color.id" :style="{color: color}">
         </div>
-        <button v-if="updateMode" @click="updateService()">Update</button>
-        <button v-else @click="createService()">Create</button>
+        <button class="button is-info" v-if="updateMode" @click="updateService()">Update</button>
+        <button class="button is-primary" v-else @click="createService()">Create</button>
       </div>
     </div>
     <button class="modal-close is-large" aria-label="close" @click="modalNewServiceActive = false"></button>
@@ -158,7 +158,8 @@
         <div class="color-picker">
           <input type="radio" name="" :value="color" v-model="modalNewEnvColor" v-for="color in colorsList" :key="color" :style="{color: color}">
         </div>
-        <button @click="createEnv()">OK</button>
+        <button class="button is-info" v-if="updateMode" @click="updateEnv()">Update</button>
+        <button class="button is-primary" v-else @click="createEnv()">Create</button>
       </div>
     </div>
     <button class="modal-close is-large" aria-label="close" @click="modalNewEnvActive = false"></button>
@@ -175,8 +176,8 @@
         <div class="color-picker">
           <input type="radio" name="project" :value="color" v-model="modalNewProjectColor" v-for="color in colorsList" :key="color" :style="{color: color}">
         </div>
-        <button v-if="updateMode" @click="updateProject()">Update</button>
-        <button v-else @click="createProject()">Create</button>
+        <button class="button is-info" v-if="updateMode" @click="updateProject()">Update</button>
+        <button class="button is-primary" v-else @click="createProject()">Create</button>
       </div>
     </div>
     <button class="modal-close is-large" aria-label="close" @click="modalNewProjectActive = false"></button>
@@ -217,6 +218,7 @@ export default {
       modalNewEnvAlias: '',
       modalNewEnvColor: "#f44336",
       modalNewEnvProject: '',
+      modalUpdateEnvId: -1,
 
       modalNewProjectActive: false,
       modalNewProjectName: '',
@@ -300,8 +302,9 @@ export default {
         });
     },
     deleteEnv: function(envId) {
+      console.log(envId)
         axios
-        .delete("http://127.0.0.1:4532/env/" + envId)
+        .delete("http://127.0.0.1:4532/envs/" + envId)
         .then(response => {
           this.loadEnvs()
         })
@@ -349,6 +352,7 @@ export default {
         });
     },
     createEnv: function(serviceId) {
+      this.updateMode = false
         axios
         .post("http://127.0.0.1:4532/envs", {
           name: this.modalNewEnvName,
@@ -369,6 +373,7 @@ export default {
         });
     },
     createProject: function(serviceId) {
+      this.updateMode = false
         axios
         .post("http://127.0.0.1:4532/projects", {
           name: this.modalNewProjectName,
@@ -407,6 +412,25 @@ export default {
           this.error = e.data;
         });
     },
+    updateEnv: function(){
+        axios
+        .put("http://127.0.0.1:4532/envs/" + this.modalUpdateEnvId, {
+          name: this.modalNewEnvName,
+          alias: this.modalNewEnvAlias,
+          project: this.modalNewEnvProject,
+          color: this.modalNewServiceColor
+        })
+        .then(response => {
+          this.modalNewEnvActive = false
+          this.loadEnvs();
+          this.modalNewEnvAlias = "";
+          this.modalNewEnvName = "";
+          this.modalNewEnvColor = colorsList[0]
+        })
+        .catch(e => {
+          this.error = e.data;
+        });
+    },
     updateProject: function(){
         axios
         .put("http://127.0.0.1:4532/projects/" + this.modalUpdateProjectId, {
@@ -424,7 +448,6 @@ export default {
         });
     },
 
-
     editService: function(service){
       this.updateMode = true
       this.modalUpdateServiceId = service.id
@@ -439,7 +462,15 @@ export default {
       }
       this.modalNewServiceActive = true
     },
-
+    editEnv: function(env){
+      this.updateMode = true
+      this.modalUpdateEnvId = env.id
+      this.modalNewEnvName = env.name
+      this.modalNewEnvAlias = env.alias
+      this.modalNewEnvColor = env.color
+      this.modalNewEnvProject = env.project
+      this.modalNewEnvActive = true
+    },
     editProject: function(project){
       console.log(project)
       this.updateMode = true
@@ -468,7 +499,9 @@ export default {
     },
 
     toggleEnv: function(env) {
-      this.$set(env, "active", !env.active);
+      if (!this.editMode){
+        this.$set(env, "active", !env.active);
+      }
     },
     togglePickerEnv: function(env) {
       this.$set(env, "pickerActive", !env.pickerActive);
@@ -483,7 +516,12 @@ export default {
         return (
           service.name.toLowerCase().includes(this.searchQuery.toLowerCase()) &&
           service.env.filter(e => {
-            return this.envs.find(x => x.id === e).active == true;
+            if (this.envs.find(x => x.id === e) != undefined){
+              return this.envs.find(x => x.id === e).active == true;
+            }
+            else{
+              return false
+            }
           }) != 0
         );
       });
@@ -733,6 +771,7 @@ header {
 }
 
 .width-picker{
+  height: 1px;
   display: flex;
   justify-content: center;
   align-items: center;
