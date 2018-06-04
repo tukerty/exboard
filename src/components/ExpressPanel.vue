@@ -6,7 +6,7 @@
         E/P
       </div>
       <div class="projects-bar">
-        <div class="projects-item" v-for="project in projects" :key="project.id">
+        <div class="projects-item" v-for="project in projects" :key="project.id" @click="currentProject = project.id, loadEnvs(project)">
           <div class="project-item-container">
             <p>{{project.name}}</p>
             <div class="project-underscore" :style="{backgroundColor: project.color}"></div>
@@ -25,15 +25,15 @@
     </header>
     <div class="control-ribbon">
       <div class="control-ribbon-buttons">
-        <a class="button">
-          <span class="icon" @click="editMode = !editMode">
+        <a class="button" @click="toggleEdit()">
+          <span class="icon">
               <b-icon
                 icon="pencil">
               </b-icon>
           </span>
         </a>
-        <a class="button">
-          <span class="icon" @click="filterMode = !filterMode">
+        <a class="button" @click="filterMode = !filterMode">
+          <span class="icon">
               <b-icon
                 icon="filter">
               </b-icon>
@@ -53,18 +53,18 @@
     </div>
     <div class="env-bar" v-if="filterMode || editMode">
       <div class="env-picker">
-      <div class="tag env-item" :class="{'active': env.active}" v-for="env in envs" :key="env.id"  :style="{backgroundColor: env.color}" @click="toggleEnv(env)">
+      <div class="tag env-item" v-if="env.project == currentProject" :class="{'active': env.active}" v-for="env in envs" :key="env.id"  :style="{backgroundColor: env.color}" @click="toggleEnv(env)">
         {{env.name}}
             <div class="service-buttons env-buttons" v-if="editMode">
                 <b-icon icon="circle-edit-outline" size="is-small" @click.native="editEnv(env)"></b-icon>
                 <b-icon icon="close-circle-outline" size="is-small" @click.native="deleteEnv(env.id)"></b-icon>
             </div>
       </div>
-      <div class="tag env-item add-env active" :style="{backgroundColor: '#607D8B'}" v-if="editMode" @click="modalNewEnvActive = true">
+      <div class="tag env-item add-env active" :style="{backgroundColor: '#607D8B'}" v-if="editMode && projects.length > 0" @click="modalNewEnvActive = true">
         Add environment +
       </div>
       </div>
-      <div class="width-picker" v-if="editMode">
+      <div class="width-picker" v-if="editMode && projects.length > 0">
         <p>Width&nbsp;</p>
         <b-field>
             <b-radio-button v-model="horizontalCount"
@@ -91,12 +91,11 @@
         </b-field>
       </div>
     </div>
-
     <div class="cards-container">
-      <draggable class="services-grid" :style="{width: gridWidth + 'px'}" v-model="services" :options="{sort:editMode, draggable: '.service-draggable'}" @start="drag=true" @end="drag=false">
-        <div class="service-block service-draggable" :style="{backgroundColor: service.bgColor}" v-for="service in filteredServices" :key="service.id"  @click="goToService(service)">
+      <draggable class="services-grid" :style="{width: gridWidth + 'px'}" @end="updateList" :list="services" :options="{sort:editMode, draggable: '.service-draggable'}" >
+        <div class="service-block service-draggable" :style="{backgroundColor: service.bgColor}" :data-id="service.id"  v-for="service in filteredServices" :key="service.id"  @click="goToService(service)">
           <div class="service-tags">
-            <div class="tag is-small" v-for="env in service.env" :key="env.id" :style="{backgroundColor: envs.find(x => x.id === env).color}">
+            <div class="tag is-small" v-for="env in service.env" :key="env.id" v-if="envs.find(x => x.id === env)" :style="{backgroundColor: envs.find(x => x.id === env).color}">
               {{envs.find(x => x.id === env).alias}}
             </div>
           </div>
@@ -107,7 +106,7 @@
               <b-icon icon="close-circle-outline" size="is-big" @click.native="deleteService(service.id)"></b-icon>
           </div>
         </div>
-        <button class="service-block service-add-button" slot="footer" v-if="editMode" @click="createNewService()">
+        <button class="service-block service-add-button" slot="footer" v-if="editMode && filteredEnvs.length > 0" @click="createNewService()">
           +
         </button>
       </draggable>
@@ -124,7 +123,7 @@
         <input class="input" type="text" placeholder="https://192.168.11.104:2046" v-model="modalNewServiceUrl">
         <label class="label">Environments</label>
         <div class="env-picker">
-          <div class="tag env-item" :class="{'active': env.pickerActive}" v-for="env in envs" :key="env.id"  :style="{backgroundColor: env.color}" @click="togglePickerEnv(env)">
+          <div class="tag env-item" :class="{'active': env.pickerActive}" v-for="env in filteredEnvs" :key="env.id"  :style="{backgroundColor: env.color}" @click="togglePickerEnv(env)">
             {{env.name}}
           </div>
         </div>
@@ -191,7 +190,7 @@ import axios from "axios";
 import draggable from "vuedraggable";
 import VuePerfectScrollbar from "vue-perfect-scrollbar";
 
-var Vue = require("vue");
+let Vue = require("vue");
 
 export default {
   components: {
@@ -205,6 +204,8 @@ export default {
       editMode: false,
       filterMode: true,
       updateMode: false,
+
+      currentProject: 0,
 
       modalNewServiceActive: false,
       modalNewServiceName: '',
@@ -222,7 +223,7 @@ export default {
 
       modalNewProjectActive: false,
       modalNewProjectName: '',
-      modalNewProjectcolor: "#f44336",
+      modalNewProjectColor: "#f44336",
       modalUpdateProjectId: -1,
 
       horizontalCount: 3,
@@ -248,6 +249,7 @@ export default {
         "#9E9E9E",
         "#607D8B"
       ],
+      servicesOrder: [],
       services: [],
       envs: [],
       projects: []
@@ -263,18 +265,36 @@ export default {
       axios
         .get("http://127.0.0.1:4532/services")
         .then(response => {
-          this.services = response.data;
+
+          let order = []
+          let gotServices = response.data
+          let sortedServices = []
+          if (this.$cookie.get('order')){
+            order = this.$cookie.get('order').split(',')
+          }
+
+          order.forEach(element => {
+            sortedServices.push(gotServices.find(serv => serv.id == element))
+          });
+
+          gotServices.forEach(service => {
+            if (!order.includes(service.id.toString())){
+            sortedServices.push(service)
+            }
+          })
+
+          this.services = sortedServices;
           this.isLoading = false;
         })
         .catch(e => {
           this.error = e.data;
         });
     },
-    loadEnvs: function() {
+    loadEnvs: function(p) {
       axios
         .get("http://127.0.0.1:4532/envs")
         .then(response => {
-          this.envs = response.data;
+          this.envs = response.data
         })
         .catch(e => {
           this.error = e.data;
@@ -285,6 +305,7 @@ export default {
         .get("http://127.0.0.1:4532/projects")
         .then(response => {
           this.projects = response.data;
+          this.currentProject = this.projects[0].id;
         })
         .catch(e => {
           this.error = e.data;
@@ -330,6 +351,7 @@ export default {
       for (var i = 0; i<sendEnvs.length; i++){
         this.modalNewServiceEnv.push(sendEnvs[i].id)
       }
+      if (this.newServiceValid){
         axios
         .post("http://127.0.0.1:4532/services", {
           name: this.modalNewServiceName,
@@ -350,9 +372,11 @@ export default {
         .catch(e => {
           this.error = e.data;
         });
+      }
     },
     createEnv: function(serviceId) {
       this.updateMode = false
+      if (this.newEnvValid){
         axios
         .post("http://127.0.0.1:4532/envs", {
           name: this.modalNewEnvName,
@@ -371,9 +395,11 @@ export default {
         .catch(e => {
           this.error = e.data;
         });
+      }
     },
     createProject: function(serviceId) {
       this.updateMode = false
+      if (this.newProjectValid){
         axios
         .post("http://127.0.0.1:4532/projects", {
           name: this.modalNewProjectName,
@@ -388,9 +414,11 @@ export default {
         .catch(e => {
           this.error = e.data;
         });
+      }
     },
 
     updateService: function(){
+      if (this.newServiceValid){
         axios
         .put("http://127.0.0.1:4532/services/" + this.modalUpdateServiceId, {
           name: this.modalNewServiceName,
@@ -411,8 +439,10 @@ export default {
         .catch(e => {
           this.error = e.data;
         });
+      }
     },
     updateEnv: function(){
+      if (this.newEnvValid){
         axios
         .put("http://127.0.0.1:4532/envs/" + this.modalUpdateEnvId, {
           name: this.modalNewEnvName,
@@ -430,8 +460,10 @@ export default {
         .catch(e => {
           this.error = e.data;
         });
+      }
     },
     updateProject: function(){
+      if (this.newProjectValid){
         axios
         .put("http://127.0.0.1:4532/projects/" + this.modalUpdateProjectId, {
           name: this.modalNewProjectName,
@@ -446,6 +478,7 @@ export default {
         .catch(e => {
           this.error = e.data;
         });
+      }
     },
 
     editService: function(service){
@@ -498,6 +531,10 @@ export default {
       }
     },
 
+    toggleEdit: function() {
+      this.editMode = !this.editMode
+    },
+
     toggleEnv: function(env) {
       if (!this.editMode){
         this.$set(env, "active", !env.active);
@@ -505,19 +542,32 @@ export default {
     },
     togglePickerEnv: function(env) {
       this.$set(env, "pickerActive", !env.pickerActive);
+    },
+    updateList: function(evt){
+      console.log(evt.from)
+      this.$cookie.set('order', Array.from(this.services, x => x.id))
     }
   },
   computed: {
+    newServiceValid: function(){
+      return this.modalNewServiceName && this.modalNewServiceUrl && this.modalNewServiceEnv && this.modalNewServiceColor
+    },
+    newEnvValid: function(){
+      return this.modalNewEnvName && this.modalNewEnvAlias && this.modalNewEnvColor && this.modalNewEnvProject
+    },
+    newProjectValid: function(){
+      return this.modalNewProjectName && this.modalNewProjectColor
+    },
     filteredServices: function() {
       var k = this;
       if (this.services != []) {
         
       return this.services.filter(service => {
         return (
-          service.name.toLowerCase().includes(this.searchQuery.toLowerCase()) &&
+          service.name.toLowerCase().includes(this.searchQuery.toLowerCase()) && service.name != undefined &&
           service.env.filter(e => {
-            if (this.envs.find(x => x.id === e) != undefined){
-              return this.envs.find(x => x.id === e).active == true;
+            if (this.filteredEnvs.find(x => x.id === e) != undefined){
+              return this.filteredEnvs.find(x => x.id === e).active == true;
             }
             else{
               return false
@@ -530,6 +580,13 @@ export default {
         return []
       }
     },
+
+    filteredEnvs: function() {
+      return this.envs.filter(env => {
+          return env.project == this.currentProject
+      })
+    },
+
     blockWidth: function(){
 
     },

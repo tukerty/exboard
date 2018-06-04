@@ -19,6 +19,7 @@
     "muuri": "^0.5.4",
     "sqlite3": "^4.0.0",
     "vue": "^2.5.2",
+    "vue-cookie": "^1.1.4",
     "vue-muuri": "^0.1.2",
     "vue-perfect-scrollbar": "^0.1.0",
     "vue-router": "^3.0.1",

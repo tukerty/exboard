@@ -15,26 +15,80 @@ app.use(express.static("dist"));
 
 app.get('/services', function (req, res) {
     db.serialize(function() {
-        var servicesList = []
-        db.each("SELECT * FROM services ORDER BY order_n ASC", function(err, row) {
-            var service = {
-            id: row.id,
-            name: row.name,
-            url: row.url,
-            bgColor: hexToRgba(row.color,20),
-            color: row.color,
-            env: ("" + row.env).split(',').map(Number)
-            }
-            servicesList.push(service)
-        }, function(){
-            res.json(servicesList);
-        });
+        let servicesList = []
+        let linksList = []
+
+        function loadLinks(){
+            let promiseLinks = new Promise(function(resolve,reject) {
+                var links = []
+                db.each("SELECT * FROM services_envs", function(err, row) {
+                    var link = {
+                        id: row.id,
+                        env_id: row.env_id,
+                        service_id: row.service_id
+                    }
+                    links.push(link)
+                }, function(){
+                    resolve(links)
+                });
+            })
+            return promiseLinks
+        }
+
+        function loadServices(){
+            let promiseServices = new Promise(function(resolve,reject){
+                db.each("SELECT * FROM services", function(err, row) {
+                    var envs = []
+                    linksList.forEach(link => {
+                        if (link.service_id === row.id){
+                            envs.push(link.env_id)
+                        }
+                    })
+                    var service = {
+                        id: row.id,
+                        name: row.name,
+                        url: row.url,
+                        bgColor: hexToRgba(row.color,20),
+                        color: row.color,
+                        env: envs
+                    }
+                    servicesList.push(service)
+                }, function(){
+                    resolve(servicesList)
+                });
+            });
+            return promiseServices
+        }
+
+        loadLinks()
+            .then(data => {
+                linksList = data
+            })
+            .then(
+                loadServices()
+                    .then(data => {
+                        servicesList = data
+                        res.json(servicesList)
+                    })
+            )
+            .catch(error => {
+                console.log(error)
+            })
+
       });
 })
 
 app.post('/services', function(req, res){
-    db.run('INSERT INTO services (name,env,url,color) VALUES ("' + req.body.name + '", "' + req.body.env + '", "' + req.body.url + '", "' + req.body.color +'")')
-    res.send("OK")
+    db.run('INSERT INTO services (name,url,color) VALUES ("' + req.body.name + '", "' + req.body.url + '", "' + req.body.color +'");',function(err,row){
+        let query = 'INSERT INTO services_envs (service_id, env_id) VALUES '  
+        let lastid = this.lastID;
+        req.body.env.forEach(function(e){
+            query += '("' + lastid + '", "' + e + '"),'
+        })
+        db.run(query.slice(0, -1), function(err,row){
+            res.send(query)
+        })
+    })
 })
 
 app.put('/services/:id', function(req, res){
@@ -50,7 +104,7 @@ app.delete('/services/:id', function (req, res) {
 app.get('/envs', function (req, res) {
   db.serialize(function() {
       var envList = []
-      db.each("SELECT * FROM envs", function(err, row) {
+      db.each("SELECT envs.* FROM envs", function(err, row) {
           var env = {
           id: row.id,
           name: row.name,
