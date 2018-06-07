@@ -1,6 +1,6 @@
 <h1 align="center">
   <br>
-  <img src="https://tukerty.tmweb.ru/images/EPDB.png" width="600">
+  <img src="https://tukerty.tmweb.ru/images/EPDB.png" height="200">
 </h1>
 
 <h4 align="center">Express Panel for microservice architecture</h4>
