@@ -44,6 +44,13 @@
     <img src="https://tukerty.tmweb.ru/images/EnvironmentsFilter.gif">
 </p>
 
+## Getting Started
+
+```bash
+npm install
+node server
+```
+
 ## Technologies
 
 ```bash
