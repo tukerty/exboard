@@ -6,7 +6,7 @@
         E/P
       </div>
       <div class="projects-bar">
-        <div class="projects-item" v-for="project in projects" :key="project.id" @click="currentProject = project.id, loadEnvs(project)">
+        <div class="projects-item" v-for="project in projects" :key="project.id" @click="currentProject = project.id; $cookie.set('lastProj', project.id); loadEnvs(project)">
           <div class="project-item-container">
             <p>{{project.name}}</p>
             <div class="project-underscore" :style="{backgroundColor: project.color}"></div>
@@ -16,7 +16,7 @@
             </div>
           </div>
         </div>
-        <div class="projects-item" v-if="editMode" @click="modalNewProjectActive = true">
+        <div class="projects-item" v-if="editMode" @click="updateMode = false; modalNewProjectActive = true">
           <div class="project-item-container">
             <p><span>+</span> Add new project</p>
           </div>
@@ -60,7 +60,7 @@
                 <b-icon icon="close-circle-outline" size="is-small" @click.native="deleteEnv(env.id)"></b-icon>
             </div>
       </div>
-      <div class="tag env-item add-env active" :style="{backgroundColor: '#607D8B'}" v-if="editMode && projects.length > 0" @click="modalNewEnvActive = true">
+      <div class="tag env-item add-env active" :style="{backgroundColor: '#607D8B'}" v-if="editMode && projects.length > 0" @click="updateMode = false; modalNewEnvActive = true">
         Add environment +
       </div>
       </div>
@@ -93,7 +93,7 @@
     </div>
     <div class="cards-container">
       <draggable class="services-grid" :style="{width: gridWidth + 'px'}" @end="updateList" :list="services" :options="{sort:editMode, draggable: '.service-draggable'}" >
-        <div class="service-block service-draggable" :style="{backgroundColor: service.bgColor}" :data-id="service.id"  v-for="service in filteredServices" :key="service.id"  @click="goToService(service)">
+        <div class="service-block service-draggable" :style="{backgroundColor: service.bgColor}" :data-id="service.id" v-if="filteredServices.includes(service)"  v-for="service in services" :key="service.id"  @click="goToService(service)">
           <div class="service-tags">
             <div class="tag is-small" v-for="env in service.env" :key="env.id" v-if="envs.find(x => x.id === env)" :style="{backgroundColor: envs.find(x => x.id === env).color}">
               {{envs.find(x => x.id === env).alias}}
@@ -142,7 +142,8 @@
     <div class="modal-background"></div>
     <div class="modal-content">
       <div class="modal-container">
-        <h1>Create new environment</h1>
+        <h1 v-if="updateMode">Edit environment</h1>
+        <h1 v-else>Create new environment</h1>
         <label class="label">Name</label>
         <input class="input" type="text" placeholder="Dev" v-model="modalNewEnvName">
         <label class="label">Alias</label>
@@ -168,7 +169,8 @@
     <div class="modal-background"></div>
     <div class="modal-content">
       <div class="modal-container">
-        <h1>Create new project</h1>
+        <h1 v-if="updateMode">Edit project</h1>
+        <h1 v-else>Create new project</h1>
         <label class="label">Name</label>
         <input class="input" type="text" placeholder="ReHoming" v-model="modalNewProjectName">
         <label class="label">Color</label>
@@ -249,7 +251,6 @@ export default {
         "#9E9E9E",
         "#607D8B"
       ],
-      servicesOrder: [],
       services: [],
       envs: [],
       projects: []
@@ -263,7 +264,7 @@ export default {
   methods: {
     loadServices: function() {
       axios
-        .get("http://127.0.0.1:4532/services")
+        .get("/services")
         .then(response => {
 
           let order = []
@@ -274,15 +275,18 @@ export default {
           }
 
           order.forEach(element => {
-            sortedServices.push(gotServices.find(serv => serv.id == element))
+            if (gotServices.find(serv => serv.id == element) != undefined){
+              sortedServices.push(gotServices.find(serv => serv.id == element))
+            }
           });
 
           gotServices.forEach(service => {
             if (!order.includes(service.id.toString())){
             sortedServices.push(service)
+            order.push(service.id)
             }
           })
-
+          this.$cookie.set('order',order)
           this.services = sortedServices;
           this.isLoading = false;
         })
@@ -292,7 +296,7 @@ export default {
     },
     loadEnvs: function(p) {
       axios
-        .get("http://127.0.0.1:4532/envs")
+        .get("/envs")
         .then(response => {
           this.envs = response.data
         })
@@ -302,10 +306,16 @@ export default {
     },
     loadProjects: function() {
       axios
-        .get("http://127.0.0.1:4532/projects")
+        .get("/projects")
         .then(response => {
           this.projects = response.data;
-          this.currentProject = this.projects[0].id;
+          let lastProj = this.$cookie.get('lastProj')
+          if (lastProj){
+            this.currentProject = lastProj 
+          }
+          else{
+            this.currentProject = this.projects[0].id;
+          }
         })
         .catch(e => {
           this.error = e.data;
@@ -313,8 +323,9 @@ export default {
     },
 
     deleteService: function(serviceId) {
+      this.$cookie.set('order',this.$cookie.get('order').split(',').filter(item => item != serviceId))
         axios
-        .delete("http://127.0.0.1:4532/services/" + serviceId)
+        .delete("/services/" + serviceId)
         .then(response => {
           this.loadServices();
         })
@@ -325,7 +336,7 @@ export default {
     deleteEnv: function(envId) {
       console.log(envId)
         axios
-        .delete("http://127.0.0.1:4532/envs/" + envId)
+        .delete("/envs/" + envId)
         .then(response => {
           this.loadEnvs()
         })
@@ -335,7 +346,7 @@ export default {
     },
     deleteProject: function(projectId) {
         axios
-        .delete("http://127.0.0.1:4532/projects/" + projectId)
+        .delete("/projects/" + projectId)
         .then(response => {
           this.loadProjects()
         })
@@ -353,7 +364,7 @@ export default {
       }
       if (this.newServiceValid){
         axios
-        .post("http://127.0.0.1:4532/services", {
+        .post("/services", {
           name: this.modalNewServiceName,
           url: this.modalNewServiceUrl,
           env: this.modalNewServiceEnv,
@@ -378,7 +389,7 @@ export default {
       this.updateMode = false
       if (this.newEnvValid){
         axios
-        .post("http://127.0.0.1:4532/envs", {
+        .post("/envs", {
           name: this.modalNewEnvName,
           alias: this.modalNewEnvAlias,
           project: this.modalNewEnvProject,
@@ -401,7 +412,7 @@ export default {
       this.updateMode = false
       if (this.newProjectValid){
         axios
-        .post("http://127.0.0.1:4532/projects", {
+        .post("/projects", {
           name: this.modalNewProjectName,
           color: this.modalNewProjectColor
         })
@@ -420,7 +431,7 @@ export default {
     updateService: function(){
       if (this.newServiceValid){
         axios
-        .put("http://127.0.0.1:4532/services/" + this.modalUpdateServiceId, {
+        .put("/services/" + this.modalUpdateServiceId, {
           name: this.modalNewServiceName,
           url: this.modalNewServiceUrl,
           env: this.modalNewServiceEnv,
@@ -444,7 +455,7 @@ export default {
     updateEnv: function(){
       if (this.newEnvValid){
         axios
-        .put("http://127.0.0.1:4532/envs/" + this.modalUpdateEnvId, {
+        .put("/envs/" + this.modalUpdateEnvId, {
           name: this.modalNewEnvName,
           alias: this.modalNewEnvAlias,
           project: this.modalNewEnvProject,
@@ -465,7 +476,7 @@ export default {
     updateProject: function(){
       if (this.newProjectValid){
         axios
-        .put("http://127.0.0.1:4532/projects/" + this.modalUpdateProjectId, {
+        .put("/projects/" + this.modalUpdateProjectId, {
           name: this.modalNewProjectName,
           color: this.modalNewProjectColor
         })
@@ -532,6 +543,7 @@ export default {
     },
 
     toggleEdit: function() {
+      this.searchQuery = ''
       this.editMode = !this.editMode
     },
 
@@ -544,8 +556,12 @@ export default {
       this.$set(env, "pickerActive", !env.pickerActive);
     },
     updateList: function(evt){
-      console.log(evt.from)
-      this.$cookie.set('order', Array.from(this.services, x => x.id))
+      let newOrder = []
+      this.services.forEach(service => newOrder.push(service.id))
+      console.log(newOrder)
+      this.$cookie.set('order',newOrder)
+      this.isLoading = true
+      this.loadServices()
     }
   },
   computed: {

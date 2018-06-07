@@ -7,11 +7,17 @@ var sqlite3 = require('sqlite3').verbose()
 var hexToRgba = require('hex-rgba')
 var db = new sqlite3.Database('db/services.db')
 
+db.run('CREATE TABLE IF NOT EXISTS "envs" ( id INTEGER PRIMARY KEY AUTOINCREMENT, name TEXT, alias TEXT, color TEXT, project INTEGER, foreign key (project) references projects(id) );')
+db.run('CREATE TABLE IF NOT EXISTS "projects" ( "id" INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT, "name" TEXT NOT NULL DEFAULT "No Name", "color" TEXT NOT NULL DEFAULT "#607D8B" );')
+db.run('CREATE TABLE IF NOT EXISTS "services" ( "id" INTEGER PRIMARY KEY AUTOINCREMENT, "name" TEXT, "url" TEXT, "color" TEXT );')
+db.run('CREATE TABLE IF NOT EXISTS "services_envs" ( "id" INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT, "service_id" INTEGER, "env_id" INTEGER, FOREIGN KEY("service_id") REFERENCES "services"("id"), FOREIGN KEY("env_id") REFERENCES "envs"("id") );')
 
 app.use(cors())
 app.use(bodyParser.json());
 app.use(express.urlencoded());
 app.use(express.static("dist"));
+
+
 
 app.get('/services', function (req, res) {
     db.serialize(function() {
@@ -77,7 +83,6 @@ app.get('/services', function (req, res) {
 
       });
 })
-
 app.post('/services', function(req, res){
     db.run('INSERT INTO services (name,url,color) VALUES ("' + req.body.name + '", "' + req.body.url + '", "' + req.body.color +'");',function(err,row){
         let query = 'INSERT INTO services_envs (service_id, env_id) VALUES '  
@@ -90,12 +95,10 @@ app.post('/services', function(req, res){
         })
     })
 })
-
 app.put('/services/:id', function(req, res){
     db.run('UPDATE services SET name="' + req.body.name + '", env="' + req.body.env + '", url="' + req.body.url + '", color="' + req.body.color +'" WHERE id=' + req.params.id)
     res.send("OK")
 })
-
 app.delete('/services/:id', function (req, res) {
     db.run('DELETE FROM services WHERE id=' + req.params.id)
     res.send("OK")
@@ -122,6 +125,11 @@ app.get('/envs', function (req, res) {
 
 app.post('/envs', function(req, res){
     db.run('INSERT INTO envs (name,alias,color, project) VALUES ("' + req.body.name + '", "' + req.body.alias + '", "' + req.body.color + '", "' + req.body.project +'")')
+    res.send("OK")
+})
+
+app.put('/envs/:id', function(req, res){
+    db.run('UPDATE envs SET name="' + req.body.name + '", alias="' + req.body.alias + '", project="' + req.body.project + '", color="' + req.body.color +'" WHERE id=' + req.params.id)
     res.send("OK")
 })
 
