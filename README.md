@@ -16,6 +16,7 @@
 
 <p align="center">
   <a href="#key-features">Key Features</a> •
+  <a href="#getting-started">Getting Started</a> •
   <a href="#technologies">Technologies</a> •
   <a href="#related">Related</a> •
   <a href="#docker">Docker</a> •
