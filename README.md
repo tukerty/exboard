@@ -1,6 +1,6 @@
 <h1 align="center">
   <br>
-  <img src="https://tukerty.tmweb.ru/images/EPD.png" width="600">
+  <img src="https://tukerty.tmweb.ru/images/EPDB.png" width="600">
 </h1>
 
 <h4 align="center">Express Panel for microservice architecture</h4>
@@ -72,7 +72,7 @@ This software uses code from several open source packages.
 
 ## Related
 
-- [Translatr](https://github.com/tukerty/translr/)
+- [Translatr](https://github.com/tukerty/translatr/)
 
 ## Docker
 
