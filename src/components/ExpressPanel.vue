@@ -93,7 +93,7 @@
     </div>
     <div class="cards-container">
       <draggable class="services-grid" :style="{width: gridWidth + 'px'}" @end="updateList" :list="services" :options="{sort:editMode, draggable: '.service-draggable'}" >
-        <div class="service-block service-draggable" :style="{backgroundColor: service.bgColor}" :data-id="service.id" v-if="filteredServices.includes(service)"  v-for="service in services" :key="service.id"  @click="goToService(service)">
+        <a class="service-block service-draggable" :style="{backgroundColor: service.bgColor}" :data-id="service.id" v-if="filteredServices.includes(service)"  v-for="service in services" :key="service.id" target="_blank" :href="service.url">
           <div class="service-tags">
             <div class="tag is-small" v-for="env in service.env" :key="env.id" v-if="envs.find(x => x.id === env)" :style="{backgroundColor: envs.find(x => x.id === env).color}">
               {{envs.find(x => x.id === env).alias}}
@@ -105,7 +105,7 @@
               <b-icon icon="circle-edit-outline" size="is-big" @click.native="editService(service)"></b-icon>
               <b-icon icon="close-circle-outline" size="is-big" @click.native="deleteService(service.id)"></b-icon>
           </div>
-        </div>
+        </a>
         <button class="service-block service-add-button" slot="footer" v-if="editMode && filteredEnvs.length > 0" @click="createNewService()">
           +
         </button>
@@ -362,6 +362,9 @@ export default {
       for (var i = 0; i<sendEnvs.length; i++){
         this.modalNewServiceEnv.push(sendEnvs[i].id)
       }
+      if (this.modalNewServiceUrl.substring(0, 7) != "http://" && this.modalNewServiceUrl.substring(0, 8) != "https://"){
+        this.modalNewServiceUrl = "http://" + this.modalNewServiceUrl;
+      }
       if (this.newServiceValid){
         axios
         .post("/services", {
@@ -459,7 +462,7 @@ export default {
           name: this.modalNewEnvName,
           alias: this.modalNewEnvAlias,
           project: this.modalNewEnvProject,
-          color: this.modalNewServiceColor
+          color: this.modalNewEnvColor
         })
         .then(response => {
           this.modalNewEnvActive = false
