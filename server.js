@@ -96,8 +96,18 @@ app.post('/services', function(req, res){
     })
 })
 app.put('/services/:id', function(req, res){
-    db.run('UPDATE services SET name="' + req.body.name + '", env="' + req.body.env + '", url="' + req.body.url + '", color="' + req.body.color +'" WHERE id=' + req.params.id)
-    res.send("OK")
+    db.run('DELETE FROM services_envs WHERE service_id = ' + req.params.id, function(){
+        let query = 'INSERT INTO services_envs (service_id, env_id) VALUES '  
+        let lastid = req.params.id;
+        req.body.env.forEach(function(e){
+            query += '("' + lastid + '", "' + e + '"),'
+        })
+        db.run(query.slice(0, -1), function(err,row){
+                    
+            db.run('UPDATE services SET name="' + req.body.name + '", url="' + req.body.url + '", color="' + req.body.color +'" WHERE id=' + req.params.id)
+            res.send("OK")
+        })
+    })
 })
 app.delete('/services/:id', function (req, res) {
     db.run('DELETE FROM services WHERE id=' + req.params.id)
