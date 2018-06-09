@@ -93,7 +93,7 @@
     </div>
     <div class="cards-container">
       <draggable class="services-grid" :style="{width: gridWidth + 'px'}" @end="updateList" :list="services" :options="{sort:editMode, draggable: '.service-draggable'}" >
-        <a class="service-block service-draggable" :style="{backgroundColor: service.bgColor}" :data-id="service.id" v-if="filteredServices.includes(service)"  v-for="service in services" :key="service.id" target="_blank" :href="service.url">
+        <a class="service-block service-draggable" :style="{backgroundColor: service.bgColor}" :data-id="service.id" v-if="filteredServices.includes(service)"  v-for="service in services" :key="service.id" @click="goToService(service)">
           <div class="service-tags">
             <div class="tag is-small" v-for="env in service.env" :key="env.id" v-if="envs.find(x => x.id === env)" :style="{backgroundColor: envs.find(x => x.id === env).color}">
               {{envs.find(x => x.id === env).alias}}
@@ -127,9 +127,19 @@
             {{env.name}}
           </div>
         </div>
-        <label class="label">Color</label>
-        <div class="color-picker">
-          <input type="radio" name="service" :value="color" v-model="modalNewServiceColor" v-for="color in colorsList" :key="color.id" :style="{color: color}">
+        <div class="field is-grouped">
+          <div class="color-picker-control control is-expanded">
+          <label class="label">Color</label>
+            <div class="color-picker">
+              <input type="radio" name="service" @change="modalNewServiceColorPicker = color" :value="color" v-model="modalNewServiceColor" v-for="color in colorsList" :key="color.id" :style="{color: color}">
+            </div>
+          </div>
+          <div class="control">
+            <label class="label">Custom color</label>
+            <div class="custom-picker">
+              <chrome-picker v-model="modalNewServiceColorPicker" @input="updateServiceColorValue" />
+            </div>
+          </div>
         </div>
         <button class="button is-info" v-if="updateMode" @click="updateService()">Update</button>
         <button class="button is-primary" v-else @click="createService()">Create</button>
@@ -189,6 +199,7 @@
 <script>
 /* eslint-disable */
 import axios from "axios";
+import { Chrome } from 'vue-color';
 import draggable from "vuedraggable";
 import VuePerfectScrollbar from "vue-perfect-scrollbar";
 
@@ -196,6 +207,7 @@ let Vue = require("vue");
 
 export default {
   components: {
+    'chrome-picker': Chrome,
     draggable,
     VuePerfectScrollbar
   },
@@ -206,7 +218,6 @@ export default {
       editMode: false,
       filterMode: true,
       updateMode: false,
-
       currentProject: 0,
 
       modalNewServiceActive: false,
@@ -215,6 +226,7 @@ export default {
       modalNewServiceUrl: '',
       modalNewServiceColor: "#f44336",
       modalUpdateServiceId: -1,
+      modalNewServiceColorPicker: "#f44336",
 
       modalNewEnvActive: false,
       modalNewEnvName: '',
@@ -359,6 +371,7 @@ export default {
       this.updateMode = false
       var sendEnvs = this.envs.filter(env => env.pickerActive == true)
       this.modalNewServiceEnv = []
+
       for (var i = 0; i<sendEnvs.length; i++){
         this.modalNewServiceEnv.push(sendEnvs[i].id)
       }
@@ -502,7 +515,6 @@ export default {
       this.modalNewServiceUrl = service.url
       this.modalNewServiceEnv = service.env
       this.modalNewServiceColor = service.color
-      console.log(service.env)
       for(var i = 0; i<service.env.length; i++){
         var f = this.envs.find(x => x.id === service.env[i])
         this.$set(f, "pickerActive", true);
@@ -541,15 +553,14 @@ export default {
 
     goToService: function(s) {
       if (!this.editMode) {
-        window.location.href = s.url;
+        var win = window.open(s.url, '_blank');
+        win.focus();
       }
     },
-
     toggleEdit: function() {
       this.searchQuery = ''
       this.editMode = !this.editMode
     },
-
     toggleEnv: function(env) {
       if (!this.editMode){
         this.$set(env, "active", !env.active);
@@ -565,6 +576,9 @@ export default {
       this.$cookie.set('order',newOrder)
       this.isLoading = true
       this.loadServices()
+    },
+    updateServiceColorValue: function(){
+      this.modalNewServiceColor = this.modalNewServiceColorPicker.hex
     }
   },
   computed: {
@@ -766,6 +780,7 @@ header {
 }
 
 .service-buttons {
+  pointer-events: all;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -855,9 +870,14 @@ header {
 }
 
 .color-picker{
-  padding: 0 0 10px 0;
+  padding: 10px 0 10px 0;
+}
+
+.custom-picker{
   display: flex;
-  justify-content: space-between;
+  align-items: center;
+  justify-content: center;
+  padding: 10px 0;
 }
 
 
@@ -869,8 +889,9 @@ input[type=radio] {
   visibility: hidden;
   position: relative;
   cursor: pointer;
-  width: 20px;
-  height: 20px;
+  margin: 5px;
+  width: 30px;
+  height: 30px;
 }
 
 input[type=radio]:before {
@@ -885,6 +906,12 @@ input[type=radio]:before {
   right: 0;
   bottom: 0;
   left: 0;
+}
+
+input[type=radio]:not(:checked):before {
+  background-color: currentColor;
+  box-shadow:inset 0px 0px 0px 3px #fff;
+  border: 2px solid currentColor;
 }
 
 input[type=radio]:checked:before {
