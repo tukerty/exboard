@@ -112,7 +112,7 @@
       </draggable>
     </div>
   <div class="modal modal-new-service" v-if="modalNewServiceActive">
-    <div class="modal-background"></div>
+    <div class="modal-background" @click="modalNewServiceActive = false"></div>
     <div class="modal-content">
       <div class="modal-container">
         <h1 v-if="updateMode">Edit service</h1>
@@ -149,7 +149,7 @@
   </div>
 
   <div class="modal modal-new-env" v-if="modalNewEnvActive">
-    <div class="modal-background"></div>
+    <div class="modal-background" @click="modalNewEnvActive = false"></div>
     <div class="modal-content">
       <div class="modal-container">
         <h1 v-if="updateMode">Edit environment</h1>
@@ -176,7 +176,7 @@
   </div>
 
   <div class="modal modal-new-project" v-if="modalNewProjectActive">
-    <div class="modal-background"></div>
+    <div class="modal-background" @click="modalNewProjectActive = false"></div>
     <div class="modal-content">
       <div class="modal-container">
         <h1 v-if="updateMode">Edit project</h1>
